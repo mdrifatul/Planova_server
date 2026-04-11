@@ -1,5 +1,5 @@
 export type TEventVisibility = "PUBLIC" | "PRIVATE";
-export type TCurrency = "USD" | "BDT" | "EUR" | "GBP";
+export type TCurrency = "USD" | "BDT" | "AED" | "EUR" | "GBP";
 
 
 export interface IEventCreate {

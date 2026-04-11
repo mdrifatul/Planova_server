@@ -89,6 +89,24 @@ const getMyEvents = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getEventParticipants = catchAsync(
+  async (req: Request, res: Response) => {
+    const eventId = req.params.eventId as string;
+    const result = await EventServices.getEventParticipants(
+      eventId,
+      req.query as IQueryParams,
+    );
+
+    sendResponse(res, {
+      httpStatusCode: httpStatus.OK,
+      success: true,
+      message: "Event participants retrieved successfully",
+      data: result.data,
+      meta: result.meta,
+    });
+  },
+);
+
 export const EventController = {
   createEvent,
   getAllEvents,
@@ -96,4 +114,5 @@ export const EventController = {
   updateEvent,
   deleteEvent,
   getMyEvents,
+  getEventParticipants,
 };

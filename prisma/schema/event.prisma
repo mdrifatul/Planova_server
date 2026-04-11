@@ -9,7 +9,7 @@ model Event {
   venue        String?
   maxAttendees Int?
   fee          Float           @default(0)
-  currency     Currency        @default(USD)
+  currency     Currency?        @default(USD)
   visibility   EventVisibility @default(PUBLIC)
   imageUrl     String?
   categoryId   String?

@@ -2,6 +2,8 @@ import {
   Event,
   ParticipationStatus,
 } from "../../../../generated/prisma/client";
+import httpStatus from "http-status";
+import AppError from "../../errorHelpers/AppError";
 import { IQueryParams } from "../../interfaces/query.interface";
 import { prisma } from "../../lib/prisma";
 import { QueryBuilder } from "../../shared/QueryBuilder";
@@ -152,6 +154,46 @@ const getMyEvents = async (userId: string, queryParams: IQueryParams) => {
   return result;
 };
 
+const getEventParticipants = async (
+  eventId: string,
+  queryParams: IQueryParams,
+) => {
+  // Verify event exists
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
+  });
+
+  if (!event) {
+    throw new AppError(httpStatus.NOT_FOUND, "Event not found");
+  }
+
+  const result = await new QueryBuilder(prisma.participation, queryParams, {
+    searchableFields: ["user.name", "user.email"],
+    filterableFields: ["status", "paymentStatus"],
+  })
+    .search()
+    .filter()
+    .where({ eventId })
+    .paginate()
+    .sort()
+    .dynamicInclude(
+      {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
+      ["user"],
+    )
+    .execute();
+
+  return result;
+};
+
 export const EventServices = {
   createEvent,
   getAllEvents,
@@ -159,4 +201,5 @@ export const EventServices = {
   updateEvent,
   deleteEvent,
   getMyEvents,
+  getEventParticipants,
 };

@@ -24,6 +24,12 @@ router.get(
 
 router.get("/:id", EventController.getEventById);
 
+router.get(
+  "/:eventId/participants",
+  checkAuth(Role.ORGANIZER, Role.ADMIN, Role.MODERATOR),
+  EventController.getEventParticipants,
+);
+
 router.patch(
   "/:id",
   checkAuth(Role.ORGANIZER),
