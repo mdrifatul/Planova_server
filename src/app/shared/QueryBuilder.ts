@@ -1,0 +1,622 @@
+import {
+  IQueryConfig,
+  IQueryParams,
+  IQueryResult,
+  PrismaCountArgs,
+  PrismaFindManyArgs,
+  PrismaModelDelegate,
+  PrismaNumberFilter,
+  PrismaStringFilter,
+  PrismaWhereConditions,
+} from "../interfaces/query.interface";
+
+/**
+ * A reusable, chainable Prisma query builder.
+ *
+ * @template T - The model type returned from `findMany` (e.g. `Event`, `User`)
+ * @template TWhereInput - The Prisma-generated WhereInput type for extra type safety on `.where()`
+ * @template TInclude - The Prisma-generated Include type for extra type safety on `.include()`
+ *
+ * @example
+ * ```ts
+ * const result = await new QueryBuilder(prisma.event, req.query, {
+ *   searchableFields: ["title", "description", "organizer.name"],
+ *   filterableFields: ["visibility", "category", "fee"],
+ * })
+ *   .search()
+ *   .filter()
+ *   .paginate()
+ *   .sort()
+ *   .include({ organizer: { select: { id: true, name: true } } })
+ *   .execute();
+ * ```
+ */
+export class QueryBuilder<
+  T,
+  TWhereInput = Record<string, unknown>,
+  TInclude = Record<string, unknown>,
+> {
+  private query: PrismaFindManyArgs;
+  private countQuery: PrismaCountArgs;
+  private page: number = 1;
+  private limit: number = 10;
+  private selectFields: Record<string, boolean> | undefined;
+
+  constructor(
+    private model: PrismaModelDelegate,
+    private queryParams: IQueryParams,
+    private config: IQueryConfig = {},
+  ) {
+    this.query = {
+      where: {},
+      include: {},
+      orderBy: {},
+      skip: 0,
+      take: 10,
+    };
+
+    this.countQuery = {
+      where: {},
+    };
+  }
+
+  // ─────────────────────────── Search ───────────────────────────
+
+  /**
+   * Builds an `OR` condition across `searchableFields` using the `searchTerm` query param.
+   *
+   * Supports:
+   * - Direct fields: `"title"`
+   * - Nested relations (2-level): `"organizer.name"` → `{ organizer: { name: { contains … } } }`
+   * - Deep nested (3-level): `"participations.user.name"` → `{ participations: { some: { user: { name: { contains … } } } } }`
+   */
+  search(): this {
+    const { searchTerm } = this.queryParams;
+    const { searchableFields } = this.config;
+
+    if (searchTerm && searchableFields && searchableFields.length > 0) {
+      const searchConditions: Record<string, unknown>[] = searchableFields.map(
+        (field) => {
+          if (field.includes(".")) {
+            const parts = field.split(".");
+
+            if (parts.length === 2) {
+              const [relation, nestedField] = parts;
+              const stringFilter: PrismaStringFilter = {
+                contains: searchTerm,
+                mode: "insensitive" as const,
+              };
+              return {
+                [relation]: {
+                  [nestedField]: stringFilter,
+                },
+              };
+            } else if (parts.length === 3) {
+              const [relation, nestedRelation, nestedField] = parts;
+              const stringFilter: PrismaStringFilter = {
+                contains: searchTerm,
+                mode: "insensitive" as const,
+              };
+              return {
+                [relation]: {
+                  some: {
+                    [nestedRelation]: {
+                      [nestedField]: stringFilter,
+                    },
+                  },
+                },
+              };
+            }
+            // Unsupported nesting depth (>3 levels) — skip silently
+            return {};
+          }
+
+          // Direct field
+          const stringFilter: PrismaStringFilter = {
+            contains: searchTerm,
+            mode: "insensitive" as const,
+          };
+          return {
+            [field]: stringFilter,
+          };
+        },
+      );
+
+      const whereConditions = this.query.where as PrismaWhereConditions;
+      whereConditions.OR = searchConditions;
+
+      const countWhereConditions = this.countQuery
+        .where as PrismaWhereConditions;
+      countWhereConditions.OR = searchConditions;
+    }
+
+    return this;
+  }
+
+  // ─────────────────────────── Filter ───────────────────────────
+
+  /**
+   * Applies exact-match and range filters from query params.
+   *
+   * Supports:
+   * - Direct: `?visibility=PUBLIC`
+   * - Nested relation: `?organizer.name=John`
+   * - Deep nested: `?participations.user.name=Jane`
+   * - Range operators: `?fee[gte]=50&fee[lte]=200`
+   * - Boolean coercion: `"true"` / `"false"` → boolean
+   * - Numeric coercion: numeric strings → number
+   * - Array values: `?tags=a&tags=b` → `{ in: [a, b] }`
+   */
+  filter(): this {
+    const { filterableFields } = this.config;
+    const excludedFields = [
+      "searchTerm",
+      "page",
+      "limit",
+      "sortBy",
+      "sortOrder",
+      "fields",
+      "include",
+    ];
+
+    const filterParams: Record<string, unknown> = {};
+
+    Object.keys(this.queryParams).forEach((key) => {
+      if (!excludedFields.includes(key)) {
+        filterParams[key] = this.queryParams[key];
+      }
+    });
+
+    const queryWhere = this.query.where as Record<string, unknown>;
+    const countQueryWhere = this.countQuery.where as Record<string, unknown>;
+
+    Object.keys(filterParams).forEach((key) => {
+      const value = filterParams[key];
+
+      if (value === undefined || value === "") {
+        return;
+      }
+
+      const isAllowedField =
+        !filterableFields ||
+        filterableFields.length === 0 ||
+        filterableFields.includes(key);
+
+      // ── Nested relation filters ──
+      if (key.includes(".")) {
+        if (filterableFields && !filterableFields.includes(key)) {
+          return;
+        }
+
+        const parts = key.split(".");
+
+        if (parts.length === 2) {
+          const [relation, nestedField] = parts;
+
+          if (!queryWhere[relation]) {
+            queryWhere[relation] = {};
+            countQueryWhere[relation] = {};
+          }
+
+          const queryRelation = queryWhere[relation] as Record<string, unknown>;
+          const countRelation = countQueryWhere[relation] as Record<
+            string,
+            unknown
+          >;
+
+          queryRelation[nestedField] = this.parseFilterValue(value);
+          countRelation[nestedField] = this.parseFilterValue(value);
+          return;
+        } else if (parts.length === 3) {
+          const [relation, nestedRelation, nestedField] = parts;
+
+          if (!queryWhere[relation]) {
+            queryWhere[relation] = { some: {} };
+            countQueryWhere[relation] = { some: {} };
+          }
+
+          const queryRelation = queryWhere[relation] as Record<string, unknown>;
+          const countRelation = countQueryWhere[relation] as Record<
+            string,
+            unknown
+          >;
+
+          if (!queryRelation.some) queryRelation.some = {};
+          if (!countRelation.some) countRelation.some = {};
+
+          const querySome = queryRelation.some as Record<string, unknown>;
+          const countSome = countRelation.some as Record<string, unknown>;
+
+          if (!querySome[nestedRelation]) querySome[nestedRelation] = {};
+          if (!countSome[nestedRelation]) countSome[nestedRelation] = {};
+
+          const queryNestedRelation = querySome[nestedRelation] as Record<
+            string,
+            unknown
+          >;
+          const countNestedRelation = countSome[nestedRelation] as Record<
+            string,
+            unknown
+          >;
+
+          queryNestedRelation[nestedField] = this.parseFilterValue(value);
+          countNestedRelation[nestedField] = this.parseFilterValue(value);
+          return;
+        }
+      }
+
+      if (!isAllowedField) {
+        return;
+      }
+
+      // ── Range filter (object with lt / gte / … operators) ──
+      if (
+        typeof value === "object" &&
+        value !== null &&
+        !Array.isArray(value)
+      ) {
+        queryWhere[key] = this.parseRangeFilter(
+          value as Record<string, string | number>,
+        );
+        countQueryWhere[key] = this.parseRangeFilter(
+          value as Record<string, string | number>,
+        );
+        return;
+      }
+
+      // ── Direct value ──
+      queryWhere[key] = this.parseFilterValue(value);
+      countQueryWhere[key] = this.parseFilterValue(value);
+    });
+
+    return this;
+  }
+
+  // ─────────────────────────── Paginate ─────────────────────────
+
+  /**
+   * Applies pagination from `page` and `limit` query params.
+   * Defaults: page = 1, limit = 10.
+   */
+  paginate(): this {
+    const page = Number(this.queryParams.page) || 1;
+    const limit = Number(this.queryParams.limit) || 10;
+
+    this.page = page;
+    this.limit = limit;
+    const skip = (page - 1) * limit;
+
+    this.query.skip = skip;
+    this.query.take = this.limit;
+
+    return this;
+  }
+
+  // ─────────────────────────── Sort ─────────────────────────────
+
+  /**
+   * Applies sorting from `sortBy` and `sortOrder` query params.
+   * Supports nested relation sorting: `sortBy=organizer.name&sortOrder=asc`.
+   * Defaults: sortBy = "createdAt", sortOrder = "desc".
+   */
+  sort(): this {
+    const sortBy = this.queryParams.sortBy || "createdAt";
+    const sortOrder = this.queryParams.sortOrder === "asc" ? "asc" : "desc";
+
+    if (sortBy.includes(".")) {
+      const parts = sortBy.split(".");
+
+      if (parts.length === 2) {
+        const [relation, nestedField] = parts;
+        this.query.orderBy = {
+          [relation]: {
+            [nestedField]: sortOrder,
+          },
+        };
+      } else if (parts.length === 3) {
+        const [relation, nestedRelation, nestedField] = parts;
+        this.query.orderBy = {
+          [relation]: {
+            [nestedRelation]: {
+              [nestedField]: sortOrder,
+            },
+          },
+        };
+      } else {
+        this.query.orderBy = { [sortBy]: sortOrder };
+      }
+    } else {
+      this.query.orderBy = { [sortBy]: sortOrder };
+    }
+
+    return this;
+  }
+
+  // ─────────────────────────── Fields ───────────────────────────
+
+  /**
+   * Selects only certain fields via `?fields=id,title,date`.
+   * When used, `include()` is automatically ignored (Prisma does not allow both).
+   */
+  fields(): this {
+    const fieldsParam = this.queryParams.fields;
+
+    if (fieldsParam && typeof fieldsParam === "string") {
+      const fieldsArray = fieldsParam.split(",").map((field) => field.trim());
+      this.selectFields = {};
+
+      fieldsArray.forEach((field) => {
+        if (this.selectFields) {
+          this.selectFields[field] = true;
+        }
+      });
+
+      this.query.select = this.selectFields as Record<
+        string,
+        boolean | Record<string, unknown>
+      >;
+
+      delete this.query.include;
+    }
+    return this;
+  }
+
+  // ─────────────────────────── Include ──────────────────────────
+
+  /**
+   * Statically include relations.
+   *
+   * @example
+   * ```ts
+   * .include({
+   *   organizer: { select: { id: true, name: true, email: true } },
+   *   _count: { select: { participations: true, reviews: true } },
+   * })
+   * ```
+   */
+  include(relation: TInclude): this {
+    if (this.selectFields) {
+      return this;
+    }
+
+    this.query.include = {
+      ...(this.query.include as Record<string, unknown>),
+      ...(relation as Record<string, unknown>),
+    };
+
+    return this;
+  }
+
+  // ─────────────────────────── Dynamic Include ──────────────────
+
+  /**
+   * Allows the client to opt-in to extra relations via `?include=reviews,payments`.
+   *
+   * @param includeConfig - Map of allowed relation names → Prisma include config
+   * @param defaultInclude - Relations included by default (no query param needed)
+   *
+   * @example
+   * ```ts
+   * .dynamicInclude(
+   *   {
+   *     organizer: { select: { id: true, name: true } },
+   *     reviews: { include: { user: { select: { name: true } } } },
+   *     payments: true,
+   *   },
+   *   ["organizer"],
+   * )
+   * ```
+   */
+  dynamicInclude(
+    includeConfig: Record<string, unknown>,
+    defaultInclude?: string[],
+  ): this {
+    if (this.selectFields) {
+      return this;
+    }
+
+    const result: Record<string, unknown> = {};
+
+    defaultInclude?.forEach((field) => {
+      if (includeConfig[field]) {
+        result[field] = includeConfig[field];
+      }
+    });
+
+    const includeParam = this.queryParams.include as string | undefined;
+
+    if (includeParam && typeof includeParam === "string") {
+      const requestedRelations = includeParam
+        .split(",")
+        .map((relation) => relation.trim());
+
+      requestedRelations.forEach((relation) => {
+        if (includeConfig[relation]) {
+          result[relation] = includeConfig[relation];
+        }
+      });
+    }
+
+    this.query.include = {
+      ...(this.query.include as Record<string, unknown>),
+      ...result,
+    };
+
+    return this;
+  }
+
+  // ─────────────────────────── Where ────────────────────────────
+
+  /**
+   * Manually inject extra where conditions (merged via deep merge).
+   *
+   * @example
+   * ```ts
+   * .where({ organizerId: userId, isActive: true })
+   * ```
+   */
+  where(condition: TWhereInput): this {
+    this.query.where = this.deepMerge(
+      this.query.where as Record<string, unknown>,
+      condition as Record<string, unknown>,
+    );
+
+    this.countQuery.where = this.deepMerge(
+      this.countQuery.where as Record<string, unknown>,
+      condition as Record<string, unknown>,
+    );
+
+    return this;
+  }
+
+  // ─────────────────────────── Execute ──────────────────────────
+
+  /**
+   * Executes both `findMany` and `count` in parallel and returns paginated results.
+   */
+  async execute(): Promise<IQueryResult<T>> {
+    const [total, data] = await Promise.all([
+      this.model.count(
+        this.countQuery as Parameters<typeof this.model.count>[0],
+      ),
+      this.model.findMany(
+        this.query as Parameters<typeof this.model.findMany>[0],
+      ),
+    ]);
+
+    const totalPages = Math.ceil(total / this.limit);
+
+    return {
+      data: data as T[],
+      meta: {
+        page: this.page,
+        limit: this.limit,
+        total,
+        totalPages,
+      },
+    };
+  }
+
+  /**
+   * Executes `findFirst` based on the built where/include/select conditions
+   * and returns a single record or null.
+   *
+   * Strips `skip`, `take`, and `orderBy` since they are irrelevant
+   * for single-record fetches.
+   */
+  async executeSingle(): Promise<T | null> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { skip: _skip, take: _take, orderBy: _orderBy, ...singleQuery } = this.query;
+    const result = await this.model.findFirst(
+      singleQuery as Parameters<typeof this.model.findFirst>[0],
+    );
+    return result as T | null;
+  }
+
+  /**
+   * Returns only the total count matching the current where conditions.
+   */
+  async count(): Promise<number> {
+    return await this.model.count(
+      this.countQuery as Parameters<typeof this.model.count>[0],
+    );
+  }
+
+  /**
+   * Returns the built query object for debugging / logging.
+   */
+  getQuery(): PrismaFindManyArgs {
+    return this.query;
+  }
+
+  // ─────────────────────────── Private Helpers ──────────────────
+
+  private deepMerge(
+    target: Record<string, unknown>,
+    source: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const result = { ...target };
+
+    for (const key in source) {
+      if (
+        source[key] &&
+        typeof source[key] === "object" &&
+        !Array.isArray(source[key])
+      ) {
+        if (
+          result[key] &&
+          typeof result[key] === "object" &&
+          !Array.isArray(result[key])
+        ) {
+          result[key] = this.deepMerge(
+            result[key] as Record<string, unknown>,
+            source[key] as Record<string, unknown>,
+          );
+        } else {
+          result[key] = source[key];
+        }
+      } else {
+        result[key] = source[key];
+      }
+    }
+    return result;
+  }
+
+  private parseFilterValue(value: unknown): unknown {
+    if (value === "true") return true;
+    if (value === "false") return false;
+
+    if (typeof value === "string" && !isNaN(Number(value)) && value !== "") {
+      return Number(value);
+    }
+
+    if (Array.isArray(value)) {
+      return { in: value.map((item) => this.parseFilterValue(item)) };
+    }
+
+    return value;
+  }
+
+  private parseRangeFilter(
+    value: Record<string, string | number>,
+  ): PrismaNumberFilter | PrismaStringFilter | Record<string, unknown> {
+    const rangeQuery: Record<string, string | number | (string | number)[]> =
+      {};
+
+    Object.keys(value).forEach((operator) => {
+      const operatorValue = value[operator];
+
+      const parsedValue: string | number =
+        typeof operatorValue === "string" && !isNaN(Number(operatorValue))
+          ? Number(operatorValue)
+          : operatorValue;
+
+      switch (operator) {
+        case "lt":
+        case "lte":
+        case "gt":
+        case "gte":
+        case "equals":
+        case "not":
+        case "contains":
+        case "startsWith":
+        case "endsWith":
+          rangeQuery[operator] = parsedValue;
+          break;
+
+        case "in":
+        case "notIn":
+          if (Array.isArray(operatorValue)) {
+            rangeQuery[operator] = operatorValue;
+          } else {
+            rangeQuery[operator] = [parsedValue];
+          }
+          break;
+        default:
+          break;
+      }
+    });
+
+    return Object.keys(rangeQuery).length > 0 ? rangeQuery : value;
+  }
+}

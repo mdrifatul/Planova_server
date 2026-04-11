@@ -1,19 +1,19 @@
 model Payment {
-  id              String        @id @default(cuid())
-  amount          Float
-  currency        String        @default("USD")
-  status          PaymentStatus @default(UNPAID)
-  paymentMethod   String?
-  transactionId   String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  amount        Float
+  currency      Currency      @default(USD)
+  status        PaymentStatus @default(UNPAID)
+  paymentMethod String?
+  transactionId String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  userId          String
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  eventId         String
-  event           Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
-  participation   Participation?
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  participation Participation?
 
   @@index([userId])
   @@index([eventId])
