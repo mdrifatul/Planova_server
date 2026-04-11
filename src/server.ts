@@ -1,7 +1,7 @@
 import app from "./app";
-import { envVars } from "./app/config/env";
+import { env } from "./app/config/env";
 
-const PORT = envVars.PORT;
+const PORT = env.PORT;
 
 const bootstrap = () => {
   try {

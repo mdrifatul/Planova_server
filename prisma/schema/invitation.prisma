@@ -1,0 +1,19 @@
+model Invitation {
+  id         String           @id @default(cuid())
+  senderId   String
+  receiverId String
+  eventId    String
+  status     InvitationStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  sender     User             @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User             @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  event      Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([receiverId, eventId])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([eventId])
+  @@map("invitation")
+}
