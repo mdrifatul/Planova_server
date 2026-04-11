@@ -1,0 +1,23 @@
+model Participation {
+  id            String              @id @default(cuid())
+  userId        String
+  eventId       String
+  status        ParticipationStatus @default(PENDING)
+  paymentStatus PaymentStatus       @default(UNPAID)
+  notes         String?
+  
+  paymentId     String?             @unique
+  payment       Payment?            @relation(fields: [paymentId], references: [id])
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event         Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+  @@map("participation")
+}

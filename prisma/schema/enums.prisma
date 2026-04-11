@@ -1,0 +1,30 @@
+enum Role {
+  ADMIN
+  ORGANIZER
+  USER
+  MODERATOR
+}
+
+enum EventVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum ParticipationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  BANNED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
