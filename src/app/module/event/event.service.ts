@@ -1,8 +1,8 @@
+import httpStatus from "http-status";
 import {
   Event,
   ParticipationStatus,
 } from "../../../../generated/prisma/client";
-import httpStatus from "http-status";
 import AppError from "../../errorHelpers/AppError";
 import { IQueryParams } from "../../interfaces/query.interface";
 import { prisma } from "../../lib/prisma";
@@ -82,6 +82,33 @@ const eventIncludeConfig = {
   },
 };
 
+// ── Helper function to generate tags based on visibility, fee, and category ──
+const generateEventTags = (
+  visibility?: string,
+  fee?: number,
+  categoryName?: string | null,
+) => {
+  const tags: string[] = [];
+
+  if (visibility === "PUBLIC") {
+    tags.push("PUBLIC");
+  } else if (visibility === "PRIVATE") {
+    tags.push("PRIVATE");
+  }
+
+  if (!fee || fee === 0) {
+    tags.push("FREE");
+  } else {
+    tags.push("PAID");
+  }
+
+  if (categoryName) {
+    tags.push(categoryName);
+  }
+
+  return tags;
+};
+
 const createEvent = async (userId: string, payload: IEventCreate) => {
   const result = await prisma.event.create({
     data: {
@@ -90,9 +117,23 @@ const createEvent = async (userId: string, payload: IEventCreate) => {
     },
     include: {
       organizer: organizerSelect,
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
-  return result;
+
+  return {
+    ...result,
+    tags: generateEventTags(
+      result.visibility,
+      result.fee,
+      result.category?.name,
+    ),
+  };
 };
 
 const getAllEvents = async (queryParams: IQueryParams) => {
@@ -107,7 +148,13 @@ const getAllEvents = async (queryParams: IQueryParams) => {
     .dynamicInclude(eventIncludeConfig, ["organizer", "category", "_count"])
     .execute();
 
-  return result;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const eventsWithTags = result.data.map((event: any) => ({
+    ...event,
+    tags: generateEventTags(event.visibility, event.fee, event.category?.name),
+  }));
+
+  return { ...result, data: eventsWithTags };
 };
 
 const getEventById = async (id: string) => {
@@ -117,7 +164,17 @@ const getEventById = async (id: string) => {
       ...eventIncludeConfig,
     },
   });
-  return result;
+
+  if (!result) return null;
+
+  return {
+    ...result,
+    tags: generateEventTags(
+      result.visibility,
+      result.fee,
+      result.category?.name,
+    ),
+  };
 };
 
 const updateEvent = async (id: string, payload: IEventUpdate) => {
@@ -126,9 +183,23 @@ const updateEvent = async (id: string, payload: IEventUpdate) => {
     data: payload,
     include: {
       organizer: organizerSelect,
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   });
-  return result;
+
+  return {
+    ...result,
+    tags: generateEventTags(
+      result.visibility,
+      result.fee,
+      result.category?.name,
+    ),
+  };
 };
 
 const deleteEvent = async (id: string) => {
@@ -151,7 +222,13 @@ const getMyEvents = async (userId: string, queryParams: IQueryParams) => {
     .dynamicInclude(eventIncludeConfig, ["organizer", "category", "_count"])
     .execute();
 
-  return result;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const eventsWithTags = result.data.map((event: any) => ({
+    ...event,
+    tags: generateEventTags(event.visibility, event.fee, event.category?.name),
+  }));
+
+  return { ...result, data: eventsWithTags };
 };
 
 const getEventParticipants = async (

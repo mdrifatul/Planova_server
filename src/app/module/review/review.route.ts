@@ -21,6 +21,10 @@ router.patch(
   ReviewController.updateReview,
 );
 
-router.delete("/:id", checkAuth(), ReviewController.deleteReview);
+router.delete(
+  "/:id",
+  checkAuth(Role.USER, Role.ORGANIZER, Role.ADMIN, Role.MODERATOR),
+  ReviewController.deleteReview,
+);
 
 export const ReviewRoutes = router;
