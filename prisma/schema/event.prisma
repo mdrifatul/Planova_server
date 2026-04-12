@@ -1,27 +1,30 @@
 model Event {
-  id            String          @id @default(cuid())
-  title         String
-  description   String?
-  date          DateTime
-  endDate       DateTime?
-  venue         String?
-  maxAttendees  Int?
-  fee           Float           @default(0)
-  currency      String          @default("USD")
-  visibility    EventVisibility @default(PUBLIC)
-  imageUrl      String?
-  category      String?
-  tags          String[]
-  isActive      Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id           String          @id @default(cuid())
+  title        String
+  description  String?
+  date         DateTime
+  startTime    String?
+  endTime      String?
+  endDate      DateTime?
+  venue        String?
+  maxAttendees Int?
+  fee          Float           @default(0)
+  currency     Currency?        @default(USD)
+  visibility   EventVisibility @default(PUBLIC)
+  imageUrl     String?
+  categoryId   String?
+  category     Category?       @relation(fields: [categoryId], references: [id])
+  tags         String[]
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
-  organizerId   String
-  organizer     User            @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  organizerId    String
+  organizer      User            @relation(fields: [organizerId], references: [id], onDelete: Cascade)
   participations Participation[]
-  reviews       Review[]
-  invitations   Invitation[]
-  payments      Payment[]
+  reviews        Review[]
+  invitations    Invitation[]
+  payments       Payment[]
 
   @@index([organizerId])
   @@index([date])

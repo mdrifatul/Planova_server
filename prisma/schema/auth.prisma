@@ -1,28 +1,27 @@
 model User {
-  id            String    @id
+  id            String   @id
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean  @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  role          Role?     @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  role          Role?    @default(USER)
   phone         String?
-  status        String    @default("ACTIVE")
+  status        String   @default("ACTIVE")
 
-  sessions      Session[]
-  accounts      Account[]
-  events        Event[]
-  participations Participation[]
-  reviews       Review[]
-  sentInvites   Invitation[] @relation("Sender")
-  receivedInvites Invitation[] @relation("Receiver")
-  payments      Payment[]
+  sessions        Session[]
+  accounts        Account[]
+  events          Event[]
+  participations  Participation[]
+  reviews         Review[]
+  sentInvites     Invitation[]    @relation("Sender")
+  receivedInvites Invitation[]    @relation("Receiver")
+  payments        Payment[]
 
   @@unique([email])
   @@map("user")
-} 
-
+}
 
 model Session {
   id        String   @id

@@ -13,6 +13,8 @@ interface EnvConfig {
   BETTER_AUTH_SECRET: string;
   APP_PASS: string;
   APP_USER: string;
+  STRIPE_SECRET_KEY: string;
+  STRIPE_WEBHOOK_SECRET: string;
 }
 
 const loadEnvVariables = (): EnvConfig => {
@@ -25,6 +27,8 @@ const loadEnvVariables = (): EnvConfig => {
     "BETTER_AUTH_SECRET",
     "APP_PASS",
     "APP_USER",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
   ];
 
   requireEnvVariable.forEach((variable) => {
@@ -45,6 +49,8 @@ const loadEnvVariables = (): EnvConfig => {
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET as string,
     APP_PASS: process.env.APP_PASS as string,
     APP_USER: process.env.APP_USER as string,
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY as string,
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET as string,
   };
 };
 

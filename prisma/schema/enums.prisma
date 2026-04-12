@@ -28,3 +28,11 @@ enum InvitationStatus {
   ACCEPTED
   DECLINED
 }
+
+enum Currency {
+  USD
+  BDT
+  AED
+  EUR
+  GBP
+}
