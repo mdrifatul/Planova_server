@@ -14,6 +14,12 @@ router.post(
   ReviewController.createReview,
 );
 
+router.get(
+  "/",
+  checkAuth(Role.USER, Role.ORGANIZER, Role.ADMIN, Role.MODERATOR),
+  ReviewController.getAllReviews,
+);
+
 router.patch(
   "/:id",
   checkAuth(Role.USER, Role.ORGANIZER, Role.ADMIN, Role.MODERATOR),

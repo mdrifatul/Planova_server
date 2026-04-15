@@ -8,12 +8,12 @@ import { prisma } from "../../lib/prisma";
 
 // Create a Stripe Checkout Session for a paid event participation
 const createCheckoutSession = async (
-  participationId: string,
+  eventId: string,
   userId: string,
 ) => {
   // Find the participation with participant and event details
   const participation = await prisma.participation.findUnique({
-    where: { id: participationId },
+    where: { userId_eventId: { userId, eventId } },
     include: {
       user: {
         select: {
@@ -117,7 +117,7 @@ const createCheckoutSession = async (
 
     // Link payment to participation
     await prisma.participation.update({
-      where: { id: participationId },
+      where: { id: participation.id },
       data: { paymentId: payment.id },
     });
   } else {

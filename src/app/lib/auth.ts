@@ -1,25 +1,25 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import nodemailer from "nodemailer";
+import { oAuthProxy } from "better-auth/plugins/oauth-proxy";
 import { env } from "../config/env";
 import { prisma } from "./prisma";
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: env.APP_USER,
-    pass: env.APP_PASS,
-  },
-});
+// const transporter = nodemailer.createTransport({
+//   host: "smtp.gmail.com",
+//   port: 587,
+//   secure: false,
+//   auth: {
+//     user: env.APP_USER,
+//     pass: env.APP_PASS,
+//   },
+// });
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
 
-  trustedOrigins: [process.env.APP_URL!],
+  trustedOrigins: [env.APP_URL!],
 
   user: {
     additionalFields: {
@@ -45,6 +45,42 @@ export const auth = betterAuth({
     autoSignIn: false,
     // requireEmailVerification: true,
   },
+
+  baseURL: env.BETTER_AUTH_URL,
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      accessType: "offline",
+      prompt: "select_account consent",
+    },
+  },
+
+  // account: { skipStateCookieCheck: true }, // solved redirect issue
+  advanced: {
+    cookies: {
+      session_token: {
+        name: "session_token", // Force this exact name
+        attributes: {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          partitioned: true,
+        },
+      },
+      state: {
+        name: "session_token", // Force this exact name
+        attributes: {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          partitioned: true,
+        },
+      },
+    },
+  },
+
+  plugins: [oAuthProxy()],
 
   // baseURL: env.APP_URL,
   // socialProviders: {

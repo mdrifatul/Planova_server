@@ -118,8 +118,23 @@ export const handlePrismaClientKnownRequestError = (
   // split by new line and take the first line as the main message, rest can be added to error sources
 
   const lines = cleanMessage.split("\n").filter((line) => line.trim());
-  const mainMessage =
+  let mainMessage =
     lines[0] || "An error occurred with the database operation.";
+
+  // Handle unique constraint violations (P2002) with user-friendly messages
+  if (error.code === "P2002") {
+    const target = error.meta?.target as string[] | undefined;
+    const modelName = error.meta?.modelName as string | undefined;
+
+    if (target && target.length > 0) {
+      const fieldName = target[0];
+      if (modelName) {
+        mainMessage = `${fieldName} already exists for ${modelName}. Please use a different value.`;
+      } else {
+        mainMessage = `${fieldName} already exists. Please use a different value.`;
+      }
+    }
+  }
 
   const errorSources: TErrorSources[] = [
     {
@@ -138,7 +153,7 @@ export const handlePrismaClientKnownRequestError = (
   return {
     success: false,
     statusCode,
-    message: `Prisma Client Known Request Error: ${mainMessage}`,
+    message: mainMessage,
     errorSources,
   };
 };

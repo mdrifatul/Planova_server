@@ -19,18 +19,18 @@ const createCheckoutSession = catchAsync(
       });
     }
 
-    const { participationId } = req.body;
+    const { eventId } = req.body;
 
-    if (!participationId) {
+    if (!eventId) {
       return sendResponse(res, {
         httpStatusCode: httpStatus.BAD_REQUEST,
         success: false,
-        message: "participationId is required",
+        message: "eventId is required",
       });
     }
 
     const result = await PaymentService.createCheckoutSession(
-      participationId,
+      eventId,
       userId,
     );
 

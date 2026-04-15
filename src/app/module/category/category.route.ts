@@ -14,12 +14,12 @@ router.post(
   CategoryController.createCategory,
 );
 
-router.get("/", CategoryController.getAllCategories);
-
-router.delete(
-  "/:id",
-  checkAuth(Role.ADMIN),
-  CategoryController.deleteCategory,
+router.get(
+  "/",
+  checkAuth(Role.ADMIN, Role.MODERATOR, Role.ORGANIZER, Role.USER),
+  CategoryController.getAllCategories,
 );
+
+router.delete("/:id", checkAuth(Role.ADMIN), CategoryController.deleteCategory);
 
 export const CategoryRoutes = router;
