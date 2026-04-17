@@ -1,7 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { oAuthProxy } from "better-auth/plugins/oauth-proxy";
-import { env } from "../config/env";
+import { oAuthProxy } from "better-auth/plugins";
 import { prisma } from "./prisma";
 
 // const transporter = nodemailer.createTransport({
@@ -9,8 +8,8 @@ import { prisma } from "./prisma";
 //   port: 587,
 //   secure: false,
 //   auth: {
-//     user: env.APP_USER,
-//     pass: env.APP_PASS,
+//     user: process.env.APP_USER,
+//     pass: process.env.APP_PASS,
 //   },
 // });
 
@@ -19,7 +18,23 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
 
-  trustedOrigins: [env.APP_URL!],
+  baseURL: process.env.APP_URL,
+  trustedOrigins: [process.env.APP_URL!],
+
+  emailAndPassword: {
+    enabled: true,
+    autoSignIn: false,
+    // requireEmailVerification: true,
+  },
+
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      accessType: "offline",
+      prompt: "select_account consent",
+    },
+  },
 
   user: {
     additionalFields: {
@@ -40,23 +55,6 @@ export const auth = betterAuth({
     },
   },
 
-  emailAndPassword: {
-    enabled: true,
-    autoSignIn: false,
-    // requireEmailVerification: true,
-  },
-
-  baseURL: env.BETTER_AUTH_URL,
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      accessType: "offline",
-      prompt: "select_account consent",
-    },
-  },
-
-  // account: { skipStateCookieCheck: true }, // solved redirect issue
   advanced: {
     cookies: {
       session_token: {
@@ -81,16 +79,6 @@ export const auth = betterAuth({
   },
 
   plugins: [oAuthProxy()],
-
-  // baseURL: env.APP_URL,
-  // socialProviders: {
-  //   google: {
-  //     clientId: env.GOOGLE_CLIENT_ID as string,
-  //     clientSecret: env.GOOGLE_CLIENT_SECRET as string,
-  //     accessType: "offline",
-  //     prompt: "select_account consent",
-  //   },
-  // },
 
   // emailVerification: {
   //   sendOnSignIn: true,

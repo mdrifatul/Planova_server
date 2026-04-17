@@ -1,8 +1,5 @@
 import httpStatus from "http-status";
-import {
-  Event,
-  ParticipationStatus,
-} from "../../../../generated/prisma/client";
+import { Event, ParticipationStatus } from "../../../generated/client";
 import AppError from "../../errorHelpers/AppError";
 import { IQueryParams } from "../../interfaces/query.interface";
 import { prisma } from "../../lib/prisma";

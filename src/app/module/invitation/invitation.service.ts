@@ -4,7 +4,7 @@ import {
   InvitationStatus,
   ParticipationStatus,
   PaymentStatus,
-} from "../../../../generated/prisma/client";
+} from "../../../generated/client";
 import AppError from "../../errorHelpers/AppError";
 import { IQueryParams } from "../../interfaces/query.interface";
 import { prisma } from "../../lib/prisma";

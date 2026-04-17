@@ -1,16 +1,13 @@
 import httpStatus from "http-status";
 import Stripe from "stripe";
-import { Currency, PaymentStatus } from "../../../../generated/prisma/enums";
+import { Currency, PaymentStatus } from "../../../generated/enums";
 import { env } from "../../config/env";
 import { stripe } from "../../config/stripe.config";
 import AppError from "../../errorHelpers/AppError";
 import { prisma } from "../../lib/prisma";
 
 // Create a Stripe Checkout Session for a paid event participation
-const createCheckoutSession = async (
-  eventId: string,
-  userId: string,
-) => {
+const createCheckoutSession = async (eventId: string, userId: string) => {
   // Find the participation with participant and event details
   const participation = await prisma.participation.findUnique({
     where: { userId_eventId: { userId, eventId } },
@@ -121,7 +118,7 @@ const createCheckoutSession = async (
       data: { paymentId: payment.id },
     });
   } else {
-    payment = await prisma.payment.update({
+    await prisma.payment.update({
       where: { id: payment.id },
       data: {
         status: PaymentStatus.UNPAID,

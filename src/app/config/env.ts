@@ -24,8 +24,6 @@ interface EnvConfig {
 
 const loadEnvVariables = (): EnvConfig => {
   const requireEnvVariable = [
-    "NODE_ENV",
-    "PORT",
     "DATABASE_URL",
     "APP_URL",
     "BETTER_AUTH_URL",
@@ -41,14 +39,23 @@ const loadEnvVariables = (): EnvConfig => {
     "GOOGLE_CLIENT_SECRET",
   ];
 
-  requireEnvVariable.forEach((variable) => {
-    if (!process.env[variable]) {
+  const missing = requireEnvVariable.filter((v) => !process.env[v]);
+
+  if (missing.length > 0) {
+    // Vercel automatically sets process.env.VERCEL = "1"
+    // On Vercel: log a warning but don't crash the whole function at module load.
+    // If env vars are missing on Vercel, they must be added in the Dashboard.
+    // On local dev: throw immediately so the developer is alerted.
+    console.error(
+      `[ENV] Missing required environment variables: ${missing.join(", ")}`,
+    );
+    if (!process.env.VERCEL) {
       throw new AppError(
         status.INTERNAL_SERVER_ERROR,
-        `Environment variable ${variable} is required but not set in .env file.`,
+        `Environment variable(s) not set: ${missing.join(", ")}`,
       );
     }
-  });
+  }
 
   return {
     NODE_ENV: process.env.NODE_ENV as string,

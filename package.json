@@ -4,17 +4,18 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/server.js",
-    "build": "tsc",
-    "dev": "tsx watch src/server.ts",
-    "lint": "eslint ./src/**/*",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npx tsx watch src/server.ts",
     "migrate": "prisma migrate dev",
     "generate": "prisma generate",
+    "build": "prisma generate && tsc && node scripts/fix-imports.js",
+    "build:tsup": "tsup",
+    "start": "node dist/server.js",
     "studio": "prisma studio",
     "push": "prisma db push",
     "pull": "prisma db pull",
-    "stripe:webhook": "stripe listen --forward-to localhost:5000/webhook",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint ./src/**/*",
+    "stripe:webhook": "stripe listen --forward-to localhost:5000/webhook"
   },
   "keywords": [],
   "type": "module",
@@ -32,6 +33,7 @@
     "http-status": "^2.1.0",
     "nodemailer": "^8.0.5",
     "pg": "^8.20.0",
+    "planova_server": "link:",
     "stripe": "^22.0.1",
     "zod": "^4.3.6"
   },
@@ -45,6 +47,7 @@
     "@types/stripe": "^8.0.417",
     "eslint": "^10.2.0",
     "prisma": "^7.7.0",
+    "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.1"
