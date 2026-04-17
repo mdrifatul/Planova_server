@@ -2,7 +2,8 @@
 import { NextFunction, Request, Response } from "express";
 import status from "http-status";
 import z from "zod";
-import { Prisma } from "../../../generated/prisma/client";
+
+import { Prisma } from "../../generated/client";
 import { env } from "../config/env";
 import AppError from "../errorHelpers/AppError";
 import {
@@ -15,8 +16,8 @@ import {
 import { handleZodError } from "../errorHelpers/handleZodError";
 import { TErrorResponse, TErrorSources } from "../interfaces/error.interface";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const globalErrorHandler = async (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   err: any,
   req: Request,
   res: Response,

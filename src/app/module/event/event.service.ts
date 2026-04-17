@@ -1,8 +1,5 @@
 import httpStatus from "http-status";
-import {
-  Event,
-  ParticipationStatus,
-} from "../../../../generated/prisma/client";
+import { Event, ParticipationStatus } from "../../../generated/client";
 import AppError from "../../errorHelpers/AppError";
 import { IQueryParams } from "../../interfaces/query.interface";
 import { prisma } from "../../lib/prisma";
@@ -29,6 +26,7 @@ const eventSearchableFields = [
   "endTime",
   "organizer.name",
   "category.name",
+  "visibility",
 ];
 
 const eventFilterableFields = [
@@ -137,16 +135,38 @@ const createEvent = async (userId: string, payload: IEventCreate) => {
 };
 
 const getAllEvents = async (queryParams: IQueryParams) => {
-  const result = await new QueryBuilder<Event>(prisma.event, queryParams, {
-    searchableFields: eventSearchableFields,
-    filterableFields: eventFilterableFields,
-  })
+  const searchTermInput = queryParams.searchTerm?.toString().toUpperCase();
+  const adjustedQueryParams = { ...queryParams };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let feeWhere: any = null;
+  if (searchTermInput === "FREE") {
+    feeWhere = { fee: 0 };
+    delete adjustedQueryParams.searchTerm;
+  } else if (searchTermInput === "PAID") {
+    feeWhere = { fee: { gt: 0 } };
+    delete adjustedQueryParams.searchTerm;
+  }
+
+  const queryBuilder = new QueryBuilder<Event>(
+    prisma.event,
+    adjustedQueryParams,
+    {
+      searchableFields: eventSearchableFields,
+      filterableFields: eventFilterableFields,
+    },
+  )
     .search()
     .filter()
     .paginate()
     .sort()
-    .dynamicInclude(eventIncludeConfig, ["organizer", "category", "_count"])
-    .execute();
+    .dynamicInclude(eventIncludeConfig, ["organizer", "category", "_count"]);
+
+  if (feeWhere) {
+    queryBuilder.where(feeWhere);
+  }
+
+  const result = await queryBuilder.execute();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const eventsWithTags = result.data.map((event: any) => ({
@@ -210,17 +230,39 @@ const deleteEvent = async (id: string) => {
 };
 
 const getMyEvents = async (userId: string, queryParams: IQueryParams) => {
-  const result = await new QueryBuilder<Event>(prisma.event, queryParams, {
-    searchableFields: eventSearchableFields,
-    filterableFields: eventFilterableFields,
-  })
+  const searchTermInput = queryParams.searchTerm?.toString().toUpperCase();
+  const adjustedQueryParams = { ...queryParams };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let feeWhere: any = null;
+  if (searchTermInput === "FREE") {
+    feeWhere = { fee: 0 };
+    delete adjustedQueryParams.searchTerm;
+  } else if (searchTermInput === "PAID") {
+    feeWhere = { fee: { gt: 0 } };
+    delete adjustedQueryParams.searchTerm;
+  }
+
+  const queryBuilder = new QueryBuilder<Event>(
+    prisma.event,
+    adjustedQueryParams,
+    {
+      searchableFields: eventSearchableFields,
+      filterableFields: eventFilterableFields,
+    },
+  )
     .search()
     .filter()
     .where({ organizerId: userId })
     .paginate()
     .sort()
-    .dynamicInclude(eventIncludeConfig, ["organizer", "category", "_count"])
-    .execute();
+    .dynamicInclude(eventIncludeConfig, ["organizer", "category", "_count"]);
+
+  if (feeWhere) {
+    queryBuilder.where(feeWhere);
+  }
+
+  const result = await queryBuilder.execute();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const eventsWithTags = result.data.map((event: any) => ({

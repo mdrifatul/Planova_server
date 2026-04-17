@@ -1,39 +1,31 @@
 import { NextFunction, Request, Response } from "express";
-import { Role } from "../../../generated/prisma/enums";
+import { Role } from "../../generated/enums";
 import { IRequestUser } from "../interfaces/requestUser.interface";
-import { auth as betterAuth } from "./../lib/auth";
 
 export const checkAuth = (...roles: Role[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const session = await betterAuth.api.getSession({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      headers: req.headers as any,
-    });
+    try {
+      const sessionToken =
+        req.cookies["__Secure-session_token"] || req.cookies["session_token"];
+      if (!sessionToken) {
+        throw new Error("Unauthorized access! No session token provided.");
+      }
 
-    if (!session) {
-      return res.status(401).json({
-        success: false,
-        message: "You are not authorize!",
-      });
+      const user: IRequestUser = {
+        id: sessionToken.user.id,
+        email: sessionToken.user.email,
+        role: (sessionToken.user.role as Role) || Role.USER,
+      };
+      req.user = user;
+      if (roles.length && !roles.includes(req.user.role as Role)) {
+        return res.status(403).json({
+          success: false,
+          message: "You are not authorize to access this resource!",
+        });
+      }
+      next();
+    } catch (error) {
+      next(error);
     }
-    // if (!session.user.emailVerified) {
-    //   return res.status(403).json({
-    //     success: false,
-    //     message: "Email verification required. Please verify you email!",
-    //   });
-    // }
-    const user: IRequestUser = {
-      id: session.user.id,
-      email: session.user.email,
-      role: (session.user.role as Role) || Role.USER,
-    };
-    req.user = user;
-    if (roles.length && !roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not authorize to access this resource!",
-      });
-    }
-    next();
   };
 };

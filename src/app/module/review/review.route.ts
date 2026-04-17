@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { Role } from "../../../../generated/prisma/enums";
 import { checkAuth } from "../../middleware/checkAuth";
 import { validateRequest } from "../../middleware/validateRequest";
+import { Role } from "./../../../generated/enums";
 import { ReviewController } from "./review.controller";
 import { ReviewValidation } from "./review.validation";
 
@@ -13,6 +13,8 @@ router.post(
   validateRequest(ReviewValidation.createReview),
   ReviewController.createReview,
 );
+
+router.get("/", ReviewController.getAllReviews);
 
 router.patch(
   "/:id",

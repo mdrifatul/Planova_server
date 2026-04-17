@@ -1,6 +1,8 @@
 import httpStatus from "http-status";
 import AppError from "../../errorHelpers/AppError";
+import { IQueryParams } from "../../interfaces/query.interface";
 import { prisma } from "../../lib/prisma";
+import { QueryBuilder } from "../../shared/QueryBuilder";
 import { IReviewCreate, IReviewUpdate } from "./review.interface";
 
 const reviewUserSelect = {
@@ -128,8 +130,30 @@ const deleteReview = async (userId: string, reviewId: string) => {
   return null;
 };
 
+const getAllReviews = async (queryParams: IQueryParams) => {
+  const queryBuilder = new QueryBuilder(prisma.review, queryParams, {
+    searchableFields: ["comment", "user.name", "event.title"],
+    filterableFields: ["rating", "eventId", "userId"],
+  })
+    .search()
+    .filter()
+    .paginate()
+    .sort()
+    .dynamicInclude(
+      {
+        user: reviewUserSelect,
+        event: reviewEventSelect,
+      },
+      ["user", "event"],
+    );
+
+  const result = await queryBuilder.execute();
+  return result;
+};
+
 export const ReviewServices = {
   createReview,
   updateReview,
   deleteReview,
+  getAllReviews,
 };

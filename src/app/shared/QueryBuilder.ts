@@ -506,7 +506,12 @@ export class QueryBuilder<
    */
   async executeSingle(): Promise<T | null> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { skip: _skip, take: _take, orderBy: _orderBy, ...singleQuery } = this.query;
+    const {
+      skip: _skip,
+      take: _take,
+      orderBy: _orderBy,
+      ...singleQuery
+    } = this.query;
     const result = await this.model.findFirst(
       singleQuery as Parameters<typeof this.model.findFirst>[0],
     );

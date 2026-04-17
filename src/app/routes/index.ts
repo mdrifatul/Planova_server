@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { aiRouter } from "../module/ai/ai.router";
 import { CategoryRoutes } from "../module/category/category.route";
 import { EventRoutes } from "../module/event/event.route";
 import { InvitationRoutes } from "../module/invitation/invitation.route";
@@ -16,5 +17,6 @@ router.use("/participations", ParticipationRoutes);
 router.use("/invitations", InvitationRoutes);
 router.use("/reviews", ReviewRoutes);
 router.use("/payments", PaymentRoutes);
+router.use("/ai", aiRouter);
 
 export const IndexRoutes = router;

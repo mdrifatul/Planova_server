@@ -1,11 +1,20 @@
 import { toNodeHandler } from "better-auth/node";
+import cors from "cors";
 import express, { Application, Request, Response } from "express";
 import { auth } from "./app/lib/auth";
 import { globalErrorHandler } from "./app/middleware/globalErrorHandler";
+import { notFound } from "./app/middleware/notFound";
 import { PaymentController } from "./app/module/payment/payment.controller";
 import { IndexRoutes } from "./app/routes";
 
 const app: Application = express();
+
+app.use(
+  cors({
+    origin: process.env.APP_URL,
+    credentials: true,
+  }),
+);
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -29,5 +38,6 @@ app.get("/", async (req: Request, res: Response) => {
 });
 
 app.use(globalErrorHandler);
+app.use(notFound);
 
 export default app;

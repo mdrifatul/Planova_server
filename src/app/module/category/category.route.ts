@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { Role } from "../../../../generated/prisma/enums";
+
+import { Role } from "../../../generated/enums";
 import { checkAuth } from "../../middleware/checkAuth";
 import { validateRequest } from "../../middleware/validateRequest";
 import { CategoryController } from "./category.controller";
@@ -14,12 +15,12 @@ router.post(
   CategoryController.createCategory,
 );
 
-router.get("/", CategoryController.getAllCategories);
-
-router.delete(
-  "/:id",
-  checkAuth(Role.ADMIN),
-  CategoryController.deleteCategory,
+router.get(
+  "/",
+  checkAuth(Role.ADMIN, Role.MODERATOR, Role.ORGANIZER, Role.USER),
+  CategoryController.getAllCategories,
 );
+
+router.delete("/:id", checkAuth(Role.ADMIN), CategoryController.deleteCategory);
 
 export const CategoryRoutes = router;
