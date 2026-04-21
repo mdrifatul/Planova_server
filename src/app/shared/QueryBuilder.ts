@@ -505,10 +505,12 @@ export class QueryBuilder<
    * for single-record fetches.
    */
   async executeSingle(): Promise<T | null> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       skip: _skip,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       take: _take,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       orderBy: _orderBy,
       ...singleQuery
     } = this.query;

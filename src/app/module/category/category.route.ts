@@ -15,11 +15,7 @@ router.post(
   CategoryController.createCategory,
 );
 
-router.get(
-  "/",
-  checkAuth(Role.ADMIN, Role.MODERATOR, Role.ORGANIZER, Role.USER),
-  CategoryController.getAllCategories,
-);
+router.get("/", CategoryController.getAllCategories);
 
 router.delete("/:id", checkAuth(Role.ADMIN), CategoryController.deleteCategory);
 
