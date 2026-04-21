@@ -26,7 +26,6 @@ const eventSearchableFields = [
   "endTime",
   "organizer.name",
   "category.name",
-  "visibility",
 ];
 
 const eventFilterableFields = [
